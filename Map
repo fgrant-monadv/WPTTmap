@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Resource Map</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      height: 100vh;
+      width: 100%;
+    }
+
+    .sidebar {
+      border-right: 1px solid #ddd;
+      background: #fff;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .controls {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      background: #fafafa;
+    }
+
+    .controls h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .controls input,
+    .controls select {
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 8px;
+      padding: 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    .results {
+      overflow: auto;
+      padding: 8px;
+      flex: 1;
+    }
+
+    .result-item {
+      padding: 10px;
+      border: 1px solid #eee;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      background: #fff;
+    }
+
+    .result-item:hover {
+      background: #f7f7f7;
+    }
+
+    .result-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .result-meta {
+      font-size: 12px;
+      color: #555;
+      line-height: 1.4;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    .custom-marker {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.25);
+    }
+
+    .legend {
+      padding: 10px;
+      font-size: 12px;
+      border-top: 1px solid #eee;
+      background: #fafafa;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+      gap: 8px;
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex: 0 0 12px;
+    }
+
+    @media (max-width: 800px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: 320px 1fr;
+      }
+
+      .sidebar {
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="sidebar">
+      <div class="controls">
+        <h2>Resource Map</h2>
+        <input id="searchInput" type="text" placeholder="Search by name, city, state, category..." />
+        <select id="categoryFilter">
+          <option value="all">All categories</option>
+        </select>
+      </div>
+
+      <div id="results" class="results"></div>
+
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div id="map"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <script>
+    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTjsEUDOSnLBUXNjryuSAN6oi95RlVK0YWstoEgCYOwSl0YO6rRfOW7xLke6tZ96iUf7jmElhv5Km4e/pub?output=csv";
+
+    const CATEGORY_COLORS = {
+      "Housing": "#2563eb",
+      "Food": "#16a34a",
+      "Healthcare": "#dc2626",
+      "Legal": "#7c3aed",
+      "Education": "#ea580c",
+      "Employment": "#0891b2",
+      "default": "#475569"
+    };
+
+    const map = L.map("map").setView([39.8283, -98.5795], 4);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    let allData = [];
+    let markerClusterGroup = L.markerClusterGroup();
+    let visibleMarkers = [];
+    let markersById = new Map();
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function getColor(category) {
+      return CATEGORY_COLORS[category] || CATEGORY_COLORS.default;
+    }
+
+    function makeMarkerIcon(category) {
+      const color = getColor(category);
+      return L.divIcon({
+        className: "",
+        html: `<div class="custom-marker" style="background:${color};"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+        popupAnchor: [0, -8]
+      });
+    }
+
+    function buildPopup(row) {
+      const fullAddress = [row.street, row.city, row.state].filter(Boolean).join(", ");
+      const websiteHtml = row.website
+        ? `<div style="margin-top:6px;"><a href="${escapeHtml(row.website)}" target="_blank" rel="noopener">Website</a></div>`
+        : "";
+
+      return `
+        <div style="max-width:260px; line-height:1.4;">
+          <div style="font-weight:bold; margin-bottom:4px;">${escapeHtml(row.name)}</div>
+          ${row.category ? `<div>${escapeHtml(row.category)}</div>` : ""}
+          ${fullAddress ? `<div>${escapeHtml(fullAddress)}</div>` : ""}
+          ${row.description ? `<div style="margin-top:6px;">${escapeHtml(row.description)}</div>` : ""}
+          ${websiteHtml}
+        </div>
+      `;
+    }
+
+    function normalizeRow(row, index) {
+      return {
+        id: index,
+        name: row.name || "",
+        street: row.street || "",
+        city: row.city || "",
+        state: row.state || "",
+        category: row.category || "",
+        description: row.description || "",
+        website: row.website || "",
+        lat: parseFloat(row.lat),
+        lng: parseFloat(row.lng)
+      };
+    }
+
+    function populateCategoryFilter(data) {
+      const select = document.getElementById("categoryFilter");
+      const categories = [...new Set(data.map(d => d.category).filter(Boolean))].sort();
+
+      categories.forEach(category => {
+        const option = document.createElement("option");
+        option.value = category;
+        option.textContent = category;
+        select.appendChild(option);
+      });
+    }
+
+    function renderLegend(data) {
+      const legend = document.getElementById("legend");
+      const categories = [...new Set(data.map(d => d.category).filter(Boolean))].sort();
+
+      legend.innerHTML = categories.map(category => `
+        <div class="legend-row">
+          <span class="legend-swatch" style="background:${getColor(category)};"></span>
+          <span>${escapeHtml(category)}</span>
+        </div>
+      `).join("");
+    }
+
+    function renderResults(data) {
+      const results = document.getElementById("results");
+
+      if (!data.length) {
+        results.innerHTML = `<div class="result-item">No matching locations found.</div>`;
+        return;
+      }
+
+      results.innerHTML = data.slice(0, 250).map(row => {
+        const address = [row.street, row.city, row.state].filter(Boolean).join(", ");
+        return `
+          <div class="result-item" data-id="${row.id}">
+            <div class="result-title">${escapeHtml(row.name)}</div>
+            <div class="result-meta">
+              ${row.category ? `${escapeHtml(row.category)}<br>` : ""}
+              ${escapeHtml(address)}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      results.querySelectorAll(".result-item[data-id]").forEach(item => {
+        item.addEventListener("click", () => {
+          const id = Number(item.getAttribute("data-id"));
+          const marker = markersById.get(id);
+          if (marker) {
+            map.setView(marker.getLatLng(), 13);
+            marker.openPopup();
+          }
+        });
+      });
+    }
+
+    function renderMarkers(data) {
+      markerClusterGroup.clearLayers();
+      markersById.clear();
+
+      visibleMarkers = data.map(row => {
+        const marker = L.marker([row.lat, row.lng], {
+          icon: makeMarkerIcon(row.category)
+        }).bindPopup(buildPopup(row));
+
+        markersById.set(row.id, marker);
+        return marker;
+      });
+
+      visibleMarkers.forEach(marker => markerClusterGroup.addLayer(marker));
+
+      if (!map.hasLayer(markerClusterGroup)) {
+        map.addLayer(markerClusterGroup);
+      }
+
+      if (visibleMarkers.length) {
+        const bounds = L.latLngBounds(visibleMarkers.map(m => m.getLatLng()));
+        map.fitBounds(bounds, { padding: [30, 30] });
+      }
+    }
+
+    function applyFilters() {
+      const searchValue = document.getElementById("searchInput").value.trim().toLowerCase();
+      const categoryValue = document.getElementById("categoryFilter").value;
+
+      const filtered = allData.filter(row => {
+        const matchesCategory = categoryValue === "all" || row.category === categoryValue;
+
+        const haystack = [
+          row.name,
+          row.street,
+          row.city,
+          row.state,
+          row.category,
+          row.description
+        ].join(" ").toLowerCase();
+
+        const matchesSearch = !searchValue || haystack.includes(searchValue);
+
+        return matchesCategory && matchesSearch;
+      });
+
+      renderMarkers(filtered);
+      renderResults(filtered);
+    }
+
+    Papa.parse(SHEET_CSV_URL, {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        allData = results.data
+          .map(normalizeRow)
+          .filter(row => !Number.isNaN(row.lat) && !Number.isNaN(row.lng));
+
+        populateCategoryFilter(allData);
+        renderLegend(allData);
+        applyFilters();
+
+        document.getElementById("searchInput").addEventListener("input", applyFilters);
+        document.getElementById("categoryFilter").addEventListener("change", applyFilters);
+      },
+      error: function(err) {
+        document.getElementById("results").innerHTML =
+          `<div class="result-item">Could not load the Google Sheet. Check your published CSV link.</div>`;
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>
