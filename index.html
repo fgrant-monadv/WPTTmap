@@ -314,19 +314,17 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
-    const TILE_FILTER = "sepia(1) saturate(2.1) hue-rotate(178deg) brightness(0.35) contrast(1.28)";
+    const TILE_FILTER = "sepia(1) saturate(2.1) hue-rotate(178deg) brightness(0.55) contrast(1.28)";
+    let filterApplied = false;
 
     function applyTileFilter() {
-      document.querySelectorAll(".leaflet-tile-pane").forEach(el => {
-        el.style.filter = TILE_FILTER;
-      });
+      if (filterApplied) return;
+      const pane = document.querySelector(".leaflet-tile-pane");
+      if (pane) {
+        pane.style.filter = TILE_FILTER;
+        filterApplied = true;
+      }
     }
-
-    // Apply filter repeatedly on load to handle Wix iframe timing issues
-    applyTileFilter();
-    setTimeout(applyTileFilter, 100);
-    setTimeout(applyTileFilter, 500);
-    setTimeout(applyTileFilter, 1500);
 
     const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTjsEUDOSnLBUXNjryuSAN6oi95RlVK0YWstoEgCYOwSl0YO6rRfOW7xLke6tZ96iUf7jmElhv5Km4e/pub?output=csv";
 
@@ -351,9 +349,9 @@
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
 
-    // Re-apply filter every time new tiles load
+    // Apply filter once tiles are ready
     tileLayer.on("load", applyTileFilter);
-    map.on("moveend zoomend", applyTileFilter);
+    setTimeout(applyTileFilter, 300);
 
     let allData = [];
     let markerClusterGroup = L.markerClusterGroup();
