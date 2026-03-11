@@ -26,10 +26,9 @@
       height: 100%;
       margin: 0;
       font-family: 'Montserrat', sans-serif;
-      background: var(--yellow);
+      background: var(--navy);
     }
 
-    /* ── Layout ── */
     .app {
       display: grid;
       grid-template-columns: 320px 1fr;
@@ -37,7 +36,6 @@
       width: 100%;
     }
 
-    /* ── Sidebar ── */
     .sidebar {
       border-right: 2px solid var(--border);
       background: #fff;
@@ -80,6 +78,7 @@
     }
 
     .controls input::placeholder { color: var(--sub); opacity: 0.7; }
+
     .controls input:focus,
     .controls select:focus {
       border-color: var(--navy);
@@ -106,7 +105,9 @@
     }
 
     .result-item:hover,
-    .result-item:active { background: var(--light); }
+    .result-item:active {
+      background: var(--light);
+    }
 
     .result-title {
       font-weight: 700;
@@ -121,35 +122,35 @@
       line-height: 1.4;
     }
 
-    /* ── Map ── */
     #map {
       height: 100%;
       width: 100%;
-      background: var(--yellow);
+      background: var(--navy);
     }
 
     .leaflet-tile-pane {
-      filter: sepia(1) saturate(1) hue-rotate(19deg) brightness(0.9) contrast(0.9);
+       filter: sepia(1) saturate(2.1) hue-rotate(178deg) brightness(0.4) contrast(1.28);
     }
 
-    .leaflet-container { background: var(--yellow) !important; }
+    .leaflet-container {
+      background: var(--navy) !important;
+    }
 
-    /* ── Markers ── */
     .custom-marker {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: var(--navy);
-      border: 2px solid var(--yellow);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.35);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--yellow);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 4px rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.35);
     }
 
-    /* ── Clusters ── */
     .marker-cluster-small,
     .marker-cluster-medium,
     .marker-cluster-large {
       background-color: rgba(230,194,0,0.55) !important;
     }
+
     .marker-cluster-small div,
     .marker-cluster-medium div,
     .marker-cluster-large div {
@@ -159,7 +160,6 @@
       font-family: 'Montserrat', sans-serif;
     }
 
-    /* ── Legend ── */
     .legend {
       padding: 10px 12px;
       font-size: 12px;
@@ -179,24 +179,33 @@
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      flex: 0 0 12px;
-      background: var(--navy);
-      border: 1.5px solid var(--yellow);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+         flex: 0 0 12px;
+         background: var(--yellow);
+         border: 1.5px solid #ffffff;
+         box-shadow: 0 0 3px rgba(255,255,255,0.6);
     }
 
-    /* ── Popup ── */
     .leaflet-popup-content-wrapper {
       border-radius: 10px;
       border: 1.5px solid var(--navy);
       box-shadow: 0 2px 8px rgba(26,58,95,0.2);
       font-family: 'Montserrat', sans-serif;
     }
-    .leaflet-popup-content { color: var(--navy); font-size: 13px; }
-    .leaflet-popup-content a { color: var(--navy); font-weight: bold; }
-    .leaflet-popup-tip { background: #fff; }
 
-    /* ── Mobile toggle button ── */
+    .leaflet-popup-content {
+      color: var(--navy);
+      font-size: 13px;
+    }
+
+    .leaflet-popup-content a {
+      color: var(--navy);
+      font-weight: bold;
+    }
+
+    .leaflet-popup-tip {
+      background: #fff;
+    }
+
     .toggle-btn {
       display: none;
       position: fixed;
@@ -218,19 +227,20 @@
       white-space: nowrap;
     }
 
-    .toggle-btn:active { opacity: 0.85; }
+    .toggle-btn:active {
+      opacity: 0.85;
+    }
 
-    /* ── Mobile ── */
     @media (max-width: 800px) {
       .app {
         grid-template-columns: 1fr;
         grid-template-rows: 1fr;
       }
 
-      /* Map fills full screen */
-      #map { height: 100vh; }
+      #map {
+        height: 100vh;
+      }
 
-      /* Sidebar slides up from bottom */
       .sidebar {
         position: fixed;
         bottom: 0;
@@ -244,11 +254,16 @@
         box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
       }
 
-      .sidebar.open { transform: translateY(0); }
+      .sidebar.open {
+        transform: translateY(0);
+      }
 
-      .toggle-btn { display: flex; align-items: center; gap: 8px; }
+      .toggle-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
 
-      /* Close button inside sidebar on mobile */
       .close-btn {
         display: flex;
         justify-content: flex-end;
@@ -268,7 +283,9 @@
     }
 
     @media (min-width: 801px) {
-      .close-btn { display: none; }
+      .close-btn {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -301,7 +318,6 @@
   <script>
     const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTjsEUDOSnLBUXNjryuSAN6oi95RlVK0YWstoEgCYOwSl0YO6rRfOW7xLke6tZ96iUf7jmElhv5Km4e/pub?output=csv";
 
-    // Mobile sidebar toggle
     const sidebar = document.getElementById("sidebar");
     const toggleBtn = document.getElementById("toggleBtn");
     const closeBtn = document.getElementById("closeBtn");
@@ -316,10 +332,9 @@
       toggleBtn.style.display = "flex";
     });
 
-    // Map setup
     const map = L.map("map").setView([39.8283, -98.5795], 4);
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
@@ -378,7 +393,8 @@
       const sel = document.getElementById("categoryFilter");
       [...new Set(data.map(d => d.category).filter(Boolean))].sort().forEach(cat => {
         const o = document.createElement("option");
-        o.value = cat; o.textContent = cat;
+        o.value = cat;
+        o.textContent = cat;
         sel.appendChild(o);
       });
     }
@@ -399,6 +415,7 @@
         results.innerHTML = `<div class="result-item">No matching locations found.</div>`;
         return;
       }
+
       results.innerHTML = data.slice(0, 250).map(row => {
         const addr = [row.street, row.city, row.state].filter(Boolean).join(", ");
         return `
@@ -417,7 +434,6 @@
           if (marker) {
             map.setView(marker.getLatLng(), 13);
             marker.openPopup();
-            // Close sidebar on mobile after selecting
             if (window.innerWidth <= 800) {
               sidebar.classList.remove("open");
               toggleBtn.style.display = "flex";
@@ -430,13 +446,16 @@
     function renderMarkers(data) {
       markerClusterGroup.clearLayers();
       markersById.clear();
+
       data.forEach(row => {
         const marker = L.marker([row.lat, row.lng], { icon: makeMarkerIcon() })
           .bindPopup(buildPopup(row));
         markersById.set(row.id, marker);
         markerClusterGroup.addLayer(marker);
       });
+
       if (!map.hasLayer(markerClusterGroup)) map.addLayer(markerClusterGroup);
+
       if (data.length) {
         const bounds = L.latLngBounds(data.map(r => [r.lat, r.lng]));
         map.fitBounds(bounds, { padding: [30, 30] });
@@ -446,17 +465,21 @@
     function applyFilters() {
       const search = document.getElementById("searchInput").value.trim().toLowerCase();
       const cat = document.getElementById("categoryFilter").value;
+
       const filtered = allData.filter(row => {
         const matchCat = cat === "all" || row.category === cat;
         const hay = [row.name, row.street, row.city, row.state, row.category, row.description].join(" ").toLowerCase();
         return matchCat && (!search || hay.includes(search));
       });
+
       renderMarkers(filtered);
       renderResults(filtered);
     }
 
     Papa.parse(SHEET_CSV_URL, {
-      download: true, header: true, skipEmptyLines: true,
+      download: true,
+      header: true,
+      skipEmptyLines: true,
       complete(res) {
         allData = res.data.map(normalizeRow).filter(r => !isNaN(r.lat) && !isNaN(r.lng));
         populateCategoryFilter(allData);
