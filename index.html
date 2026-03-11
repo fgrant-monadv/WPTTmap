@@ -459,6 +459,7 @@
       if (data.length) {
         const bounds = L.latLngBounds(data.map(r => [r.lat, r.lng]));
         map.fitBounds(bounds, { padding: [30, 30] });
+        setTimeout(() => map.invalidateSize(), 100);
       }
     }
 
