@@ -38,7 +38,7 @@
     /* ── Sidebar ── */
     .sidebar {
       border-right: 2px solid var(--border);
-      background: var(--yellow);
+      background: #fff;
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -47,7 +47,7 @@
     .controls {
       padding: 14px 12px 10px;
       border-bottom: 1px solid var(--border);
-      background: var(--yellow);
+      background: #fff;
     }
 
     .controls h2 {
@@ -83,7 +83,7 @@
       overflow: auto;
       padding: 8px;
       flex: 1;
-      background: var(--yellow);
+      background: #fff;
     }
 
     .result-item {
@@ -118,9 +118,9 @@
       background: var(--yellow);
     }
 
-    /* Tint the map tiles: white land stays light, water becomes yellow */
+    /* Subtle warm tint — Stadia's white land stays light, yellow shows as ocean */
     .leaflet-tile-pane {
-      filter: hue-rotate(0deg) saturate(0.15) brightness(1.05);
+      filter: sepia(0.25) saturate(1.8) hue-rotate(2deg) brightness(1.02);
     }
 
     /* Yellow background behind tiles (shows as ocean color) */
@@ -157,7 +157,7 @@
       padding: 10px 12px;
       font-size: 12px;
       border-top: 1px solid var(--border);
-      background: var(--yellow);
+      background: #fff;
     }
 
     .legend-row {
@@ -234,7 +234,6 @@
 
     const map = L.map("map").setView([39.8283, -98.5795], 4);
 
-    // Carto Light tiles — clean land, muted roads; yellow shows through as ocean
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
