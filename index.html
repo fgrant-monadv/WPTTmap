@@ -315,15 +315,7 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
-    const TILE_FILTER = "sepia(1) saturate(2.1) hue-rotate(178deg) brightness(0.55) contrast(1.28)";
-
-    function applyTileFilter() {
-      const pane = document.querySelector(".leaflet-tile-pane");
-      if (pane && !pane.dataset.filtered) {
-        pane.style.filter = TILE_FILTER;
-        pane.dataset.filtered = "1";
-      }
-    }
+    function applyTileFilter() {} // no-op, no longer needed
 
     const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTjsEUDOSnLBUXNjryuSAN6oi95RlVK0YWstoEgCYOwSl0YO6rRfOW7xLke6tZ96iUf7jmElhv5Km4e/pub?output=csv";
 
@@ -343,14 +335,15 @@
 
     const map = L.map("map").setView([39.8283, -98.5795], 4);
 
-    const tileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    const tileLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
 
-    // Apply filter once tiles are ready
-    tileLayer.on("load", applyTileFilter);
-    setTimeout(applyTileFilter, 300);
+    // Wait for tiles to fully render before applying filter
+    tileLayer.on("load", () => {
+      setTimeout(applyTileFilter, 50);
+    });
 
     let allData = [];
     let markerClusterGroup = L.markerClusterGroup();
