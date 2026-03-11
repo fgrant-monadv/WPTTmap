@@ -128,21 +128,19 @@
       background: var(--navy);
     }
 
-    .leaflet-tile-pane {
-       filter: sepia(1) saturate(2.1) hue-rotate(178deg) brightness(0.35) contrast(1.28);
-    }
+    /* Removed CSS filter from here - now applied via JS to fix Wix iframe issue */
 
     .leaflet-container {
       background: var(--navy) !important;
     }
 
     .custom-marker {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--yellow);
-  border: 2px solid #ffffff;
-  box-shadow: 0 0 4px rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.35);
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--yellow);
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 4px rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.35);
     }
 
     .marker-cluster-small,
@@ -179,10 +177,10 @@
       width: 12px;
       height: 12px;
       border-radius: 50%;
-         flex: 0 0 12px;
-         background: var(--yellow);
-         border: 1.5px solid #ffffff;
-         box-shadow: 0 0 3px rgba(255,255,255,0.6);
+      flex: 0 0 12px;
+      background: var(--yellow);
+      border: 1.5px solid #ffffff;
+      box-shadow: 0 0 3px rgba(255,255,255,0.6);
     }
 
     .leaflet-popup-content-wrapper {
@@ -316,6 +314,20 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
+    const TILE_FILTER = "sepia(1) saturate(2.1) hue-rotate(178deg) brightness(0.35) contrast(1.28)";
+
+    function applyTileFilter() {
+      document.querySelectorAll(".leaflet-tile-pane").forEach(el => {
+        el.style.filter = TILE_FILTER;
+      });
+    }
+
+    // Apply filter repeatedly on load to handle Wix iframe timing issues
+    applyTileFilter();
+    setTimeout(applyTileFilter, 100);
+    setTimeout(applyTileFilter, 500);
+    setTimeout(applyTileFilter, 1500);
+
     const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTjsEUDOSnLBUXNjryuSAN6oi95RlVK0YWstoEgCYOwSl0YO6rRfOW7xLke6tZ96iUf7jmElhv5Km4e/pub?output=csv";
 
     const sidebar = document.getElementById("sidebar");
@@ -334,10 +346,14 @@
 
     const map = L.map("map").setView([39.8283, -98.5795], 4);
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
+    const tileLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
+
+    // Re-apply filter every time new tiles load
+    tileLayer.on("load", applyTileFilter);
+    map.on("moveend zoomend", applyTileFilter);
 
     let allData = [];
     let markerClusterGroup = L.markerClusterGroup();
@@ -459,7 +475,7 @@
       if (data.length) {
         const bounds = L.latLngBounds(data.map(r => [r.lat, r.lng]));
         map.fitBounds(bounds, { padding: [30, 30] });
-        setTimeout(() => map.invalidateSize(), 100);
+        setTimeout(() => { map.invalidateSize(); applyTileFilter(); }, 100);
       }
     }
 
