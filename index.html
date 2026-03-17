@@ -250,7 +250,6 @@
     map.addControl(new mapboxgl.NavigationControl(), "top-left");
 
     let allData = [];
-    let popupMap = {}; // id -> popup for sidebar click
 
     function escapeHtml(v) {
       return String(v || "")
@@ -309,54 +308,20 @@
     }
 
     function addMapLayers(geojson) {
-      // Remove existing layers/source if re-rendering
-      ["clusters", "cluster-count", "unclustered-point"].forEach(id => {
+      ["unclustered-point"].forEach(id => {
         if (map.getLayer(id)) map.removeLayer(id);
       });
       if (map.getSource("locations")) map.removeSource("locations");
 
       map.addSource("locations", {
         type: "geojson",
-        data: geojson,
-        cluster: true,
-        clusterMaxZoom: 14,
-        clusterRadius: 50
+        data: geojson
       });
 
-      // Cluster circles
-      map.addLayer({
-        id: "clusters",
-        type: "circle",
-        source: "locations",
-        filter: ["has", "point_count"],
-        paint: {
-          "circle-color": "#1a3a5f",
-          "circle-radius": ["step", ["get", "point_count"], 18, 10, 24, 50, 30],
-          "circle-stroke-width": 2,
-          "circle-stroke-color": "#e6c200"
-        }
-      });
-
-      // Cluster count labels
-      map.addLayer({
-        id: "cluster-count",
-        type: "symbol",
-        source: "locations",
-        filter: ["has", "point_count"],
-        layout: {
-          "text-field": "{point_count_abbreviated}",
-          "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-          "text-size": 13
-        },
-        paint: { "text-color": "#e6c200" }
-      });
-
-      // Individual points
       map.addLayer({
         id: "unclustered-point",
         type: "circle",
         source: "locations",
-        filter: ["!", ["has", "point_count"]],
         paint: {
           "circle-color": "#1a3a5f",
           "circle-radius": 7,
@@ -365,17 +330,6 @@
         }
       });
 
-      // Click cluster -> zoom in
-      map.on("click", "clusters", e => {
-        const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] });
-        const clusterId = features[0].properties.cluster_id;
-        map.getSource("locations").getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (err) return;
-          map.easeTo({ center: features[0].geometry.coordinates, zoom });
-        });
-      });
-
-      // Click point -> show popup
       map.on("click", "unclustered-point", e => {
         const props = e.features[0].properties;
         const coords = e.features[0].geometry.coordinates.slice();
@@ -385,16 +339,12 @@
           .addTo(map);
       });
 
-      // Cursor changes
-      map.on("mouseenter", "clusters", () => map.getCanvas().style.cursor = "pointer");
-      map.on("mouseleave", "clusters", () => map.getCanvas().style.cursor = "");
       map.on("mouseenter", "unclustered-point", () => map.getCanvas().style.cursor = "pointer");
       map.on("mouseleave", "unclustered-point", () => map.getCanvas().style.cursor = "");
     }
 
     function populateCategoryFilter(data) {
       const sel = document.getElementById("categoryFilter");
-      // Clear existing options except "All"
       while (sel.options.length > 1) sel.remove(1);
       [...new Set(data.map(d => d.category).filter(Boolean))].sort().forEach(cat => {
         const o = document.createElement("option");
@@ -422,7 +372,7 @@
       results.innerHTML = data.slice(0, 250).map(row => {
         const addr = [row.street, row.city, row.state].filter(Boolean).join(", ");
         return `
-          <div class="result-item" data-lat="${row.lat}" data-lng="${row.lng}" data-name="${escapeHtml(row.name)}" data-id="${row.id}">
+          <div class="result-item" data-lat="${row.lat}" data-lng="${row.lng}" data-id="${row.id}">
             <div class="result-title">${escapeHtml(row.name)}</div>
             <div class="result-meta">
               ${row.category ? `${escapeHtml(row.category)}<br>` : ""}
@@ -461,7 +411,6 @@
         return matchCat && (!search || hay.includes(search));
       });
 
-      // Update map source
       if (map.getSource("locations")) {
         map.getSource("locations").setData(buildGeoJSON(filtered));
       }
