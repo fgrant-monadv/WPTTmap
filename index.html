@@ -126,24 +126,37 @@
 
     .leaflet-container { background: var(--navy) !important; }
 
-    /* Pin marker */
+    /* Pushpin marker */
     .pin-marker {
-      width: 0;
-      height: 0;
       position: relative;
+      width: 12px;
+      height: 30px;
     }
+    /* Ball head */
     .pin-marker::before {
       content: '';
       position: absolute;
-      width: 16px;
-      height: 16px;
-      background: var(--yellow);
-      border: 2px solid var(--navy);
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg) translate(-50%, -10%);
-      left: 0;
       top: 0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      left: 50%;
+      transform: translateX(-50%);
+      width: 12px;
+      height: 12px;
+      background: var(--yellow);
+      border: 2px solid rgba(0,0,0,0.3);
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    }
+    /* Stick */
+    .pin-marker::after {
+      content: '';
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 2px;
+      height: 18px;
+      background: rgba(255,255,255,0.7);
+      border-radius: 1px;
     }
 
     .legend {
@@ -303,9 +316,9 @@
       return L.divIcon({
         className: "",
         html: `<div class="pin-marker"></div>`,
-        iconSize: [20, 24],
-        iconAnchor: [6, 22],
-        popupAnchor: [2, -20]
+        iconSize: [12, 30],
+        iconAnchor: [6, 30],
+        popupAnchor: [0, -30]
       });
     }
 
