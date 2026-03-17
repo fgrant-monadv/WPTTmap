@@ -125,10 +125,18 @@
     }
 
     .leaflet-tile-pane {
-      filter: hue-rotate(180deg) saturate(1.5) brightness(0.85);
+      filter: grayscale(1) brightness(1.1);
     }
 
-    .leaflet-container { background: var(--navy) !important; }
+    /* Navy blue overlay on top of tiles */
+    #map::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(26, 58, 95, 0.5);
+      pointer-events: none;
+      z-index: 400;
+    }
 
     /* Pushpin marker */
     .pin-marker {
@@ -301,7 +309,7 @@
 
     const map = L.map("map").setView([39.8283, -98.5795], 4);
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
