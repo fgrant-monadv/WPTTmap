@@ -3,10 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;" />
   <title>Resource Map</title>
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
 
   <style>
@@ -15,7 +14,6 @@
       --navy:   #1a3a5f;
       --light:  #f7f9fb;
       --border: #d4b800;
-      --text:   #1a3a5f;
       --sub:    #3a5a7f;
     }
 
@@ -121,21 +119,6 @@
     #map {
       height: 100%;
       width: 100%;
-      background: var(--navy);
-    }
-
-    .leaflet-tile-pane {
-      filter: grayscale(1) brightness(1.1);
-    }
-
-    /* Navy blue overlay on top of tiles */
-    #map::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: rgba(26, 58, 95, 0.5);
-      pointer-events: none;
-      z-index: 400;
     }
 
     /* Pushpin marker */
@@ -143,8 +126,8 @@
       position: relative;
       width: 12px;
       height: 30px;
+      cursor: pointer;
     }
-    /* Ball head */
     .pin-marker::before {
       content: '';
       position: absolute;
@@ -158,7 +141,6 @@
       border-radius: 50%;
       box-shadow: 0 2px 4px rgba(0,0,0,0.4);
     }
-    /* Stick */
     .pin-marker::after {
       content: '';
       position: absolute;
@@ -170,6 +152,21 @@
       background: rgba(255,255,255,0.7);
       border-radius: 1px;
     }
+
+    /* Mapbox popup */
+    .mapboxgl-popup-content {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 13px;
+      color: var(--navy);
+      border-radius: 10px;
+      border: 1.5px solid var(--navy);
+      box-shadow: 0 2px 8px rgba(26,58,95,0.2);
+      padding: 12px;
+      max-width: 260px;
+      line-height: 1.5;
+    }
+    .mapboxgl-popup-content a { color: var(--navy); font-weight: bold; }
+    .mapboxgl-popup-close-button { font-size: 16px; color: var(--navy); }
 
     .legend {
       padding: 10px 12px;
@@ -194,16 +191,6 @@
       background: var(--yellow);
       border: 1.5px solid var(--navy);
     }
-
-    .leaflet-popup-content-wrapper {
-      border-radius: 10px;
-      border: 1.5px solid var(--navy);
-      box-shadow: 0 2px 8px rgba(26,58,95,0.2);
-      font-family: 'Montserrat', sans-serif;
-    }
-    .leaflet-popup-content { color: var(--navy); font-size: 13px; }
-    .leaflet-popup-content a { color: var(--navy); font-weight: bold; }
-    .leaflet-popup-tip { background: #fff; }
 
     .toggle-btn {
       display: none;
@@ -288,7 +275,7 @@
 
   <button class="toggle-btn" id="toggleBtn">☰ Browse Locations</button>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
@@ -307,16 +294,20 @@
       toggleBtn.style.display = "flex";
     });
 
-    const map = L.map("map").setView([39.8283, -98.5795], 4);
+    mapboxgl.accessToken = "pk.eyJ1IjoiZmdyYW50MiIsImEiOiJjbW1tNjN5bXcxeDN4MnJwc3E3NG8zdXBuIn0.FtstObcTAyzZSyaXSj6alQ";
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-    }).addTo(map);
+    const map = new mapboxgl.Map({
+      container: "map",
+      style: "mapbox://styles/fgrant2/cmmm55hko000k01sagqrncb4n",
+      center: [-98.5795, 39.8283],
+      zoom: 3.5
+    });
+
+    map.addControl(new mapboxgl.NavigationControl(), "top-right");
 
     let allData = [];
+    let activeMarkers = [];
     let markersById = new Map();
-    let markerLayer = L.layerGroup().addTo(map);
 
     function escapeHtml(v) {
       return String(v || "")
@@ -324,23 +315,13 @@
         .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    function makePinIcon() {
-      return L.divIcon({
-        className: "",
-        html: `<div class="pin-marker"></div>`,
-        iconSize: [12, 30],
-        iconAnchor: [6, 30],
-        popupAnchor: [0, -30]
-      });
-    }
-
-    function buildPopup(row) {
+    function buildPopupHtml(row) {
       const addr = [row.street, row.city, row.state].filter(Boolean).join(", ");
       const web = row.website
         ? `<div style="margin-top:6px;"><a href="${escapeHtml(row.website)}" target="_blank" rel="noopener">Website →</a></div>`
         : "";
       return `
-        <div style="max-width:260px;line-height:1.5;">
+        <div>
           <div style="font-weight:bold;margin-bottom:4px;">${escapeHtml(row.name)}</div>
           ${row.category ? `<div>${escapeHtml(row.category)}</div>` : ""}
           ${addr ? `<div>${escapeHtml(addr)}</div>` : ""}
@@ -403,10 +384,11 @@
 
       results.querySelectorAll(".result-item[data-id]").forEach(item => {
         item.addEventListener("click", () => {
-          const marker = markersById.get(Number(item.dataset.id));
+          const id = Number(item.dataset.id);
+          const { marker, row } = markersById.get(id) || {};
           if (marker) {
-            map.setView(marker.getLatLng(), 13);
-            marker.openPopup();
+            map.flyTo({ center: [row.lng, row.lat], zoom: 13 });
+            marker.togglePopup();
             if (window.innerWidth <= 800) {
               sidebar.classList.remove("open");
               toggleBtn.style.display = "flex";
@@ -417,17 +399,32 @@
     }
 
     function renderMarkers(data) {
-      markerLayer.clearLayers();
+      activeMarkers.forEach(m => m.remove());
+      activeMarkers = [];
       markersById.clear();
+
       data.forEach(row => {
-        const marker = L.marker([row.lat, row.lng], { icon: makePinIcon() })
-          .bindPopup(buildPopup(row));
-        markersById.set(row.id, marker);
-        markerLayer.addLayer(marker);
+        const el = document.createElement("div");
+        el.className = "pin-marker";
+
+        const popup = new mapboxgl.Popup({ offset: [0, -28] })
+          .setHTML(buildPopupHtml(row));
+
+        const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
+          .setLngLat([row.lng, row.lat])
+          .setPopup(popup)
+          .addTo(map);
+
+        activeMarkers.push(marker);
+        markersById.set(row.id, { marker, row });
       });
+
       if (data.length) {
-        const bounds = L.latLngBounds(data.map(r => [r.lat, r.lng]));
-        map.fitBounds(bounds, { padding: [30, 30] });
+        const bounds = data.reduce((b, r) =>
+          b.extend([r.lng, r.lat]),
+          new mapboxgl.LngLatBounds([data[0].lng, data[0].lat], [data[0].lng, data[0].lat])
+        );
+        map.fitBounds(bounds, { padding: 60 });
       }
     }
 
@@ -449,13 +446,15 @@
         allData = res.data.map(normalizeRow).filter(r => !isNaN(r.lat) && !isNaN(r.lng));
         populateCategoryFilter(allData);
         renderLegend(allData);
-        applyFilters();
-        document.getElementById("searchInput").addEventListener("input", applyFilters);
-        document.getElementById("categoryFilter").addEventListener("change", applyFilters);
+        map.on("load", () => {
+          applyFilters();
+          document.getElementById("searchInput").addEventListener("input", applyFilters);
+          document.getElementById("categoryFilter").addEventListener("change", applyFilters);
+        });
       },
       error(err) {
         document.getElementById("results").innerHTML =
-          `<div class="result-item">Could not load the Google Sheet. Check your published CSV link.</div>`;
+          `<div class="result-item">Could not load the Google Sheet.</div>`;
         console.error(err);
       }
     });
