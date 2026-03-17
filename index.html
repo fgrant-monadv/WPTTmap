@@ -25,7 +25,7 @@
       height: 100%;
       margin: 0;
       font-family: 'Montserrat', sans-serif;
-      background: var(--yellow);
+      background: var(--navy);
     }
 
     .app {
@@ -142,7 +142,6 @@
       flex: 0 0 12px;
       background: var(--navy);
       border: 1.5px solid var(--yellow);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
 
     .mapboxgl-popup-content {
@@ -238,7 +237,7 @@
     toggleBtn.addEventListener("click", () => { sidebar.classList.add("open"); toggleBtn.style.display = "none"; });
     closeBtn.addEventListener("click", () => { sidebar.classList.remove("open"); toggleBtn.style.display = "flex"; });
 
-    mapboxgl.accessToken = "pk.eyJ1IjoiZmdyYW50MiIsImEiOiJjbW11eWV3MWswZ2p6MnBteDhwemJpZDBvIn0.FHfm0yNM8GsgdTw4ZiCkrQ";
+    mapboxgl.accessToken = "pk.eyJ1IjoiZmdyYW50MiIsImEiOiJjbW1tNjN5bXcxeDN4MnJwc3E3NG8zdXBuIn0.FtstObcTAyzZSyaXSj6alQ";
 
     const map = new mapboxgl.Map({
       container: "map",
@@ -250,6 +249,8 @@
     map.addControl(new mapboxgl.NavigationControl(), "top-left");
 
     let allData = [];
+    let activeMarkers = [];
+    let markersById = new Map();
 
     function escapeHtml(v) {
       return String(v || "")
@@ -272,75 +273,55 @@
       };
     }
 
-    function buildGeoJSON(data) {
-      return {
-        type: "FeatureCollection",
-        features: data.map(row => ({
-          type: "Feature",
-          geometry: { type: "Point", coordinates: [row.lng, row.lat] },
-          properties: {
-            id: row.id,
-            name: row.name,
-            street: row.street,
-            city: row.city,
-            state: row.state,
-            category: row.category,
-            description: row.description,
-            website: row.website
-          }
-        }))
-      };
-    }
-
-    function buildPopupHtml(props) {
-      const addr = [props.street, props.city, props.state].filter(Boolean).join(", ");
-      const web = props.website
-        ? `<div style="margin-top:6px;"><a href="${escapeHtml(props.website)}" target="_blank" rel="noopener">Website →</a></div>`
+    function buildPopupHtml(row) {
+      const addr = [row.street, row.city, row.state].filter(Boolean).join(", ");
+      const web = row.website
+        ? `<div style="margin-top:6px;"><a href="${escapeHtml(row.website)}" target="_blank" rel="noopener">Website →</a></div>`
         : "";
       return `
         <div style="max-width:260px;line-height:1.5;">
-          <div style="font-weight:bold;margin-bottom:4px;">${escapeHtml(props.name)}</div>
-          ${props.category ? `<div>${escapeHtml(props.category)}</div>` : ""}
+          <div style="font-weight:bold;margin-bottom:4px;">${escapeHtml(row.name)}</div>
+          ${row.category ? `<div>${escapeHtml(row.category)}</div>` : ""}
           ${addr ? `<div>${escapeHtml(addr)}</div>` : ""}
-          ${props.description ? `<div style="margin-top:6px;">${escapeHtml(props.description)}</div>` : ""}
+          ${row.description ? `<div style="margin-top:6px;">${escapeHtml(row.description)}</div>` : ""}
           ${web}
         </div>`;
     }
 
-    function addMapLayers(geojson) {
-      ["unclustered-point"].forEach(id => {
-        if (map.getLayer(id)) map.removeLayer(id);
-      });
-      if (map.getSource("locations")) map.removeSource("locations");
+    function makePinEl() {
+      const el = document.createElement("div");
+      el.style.cssText = "width:20px;height:30px;cursor:pointer;";
+      el.innerHTML = `<svg viewBox="0 0 20 30" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 0 C4.5 0 0 4.5 0 10 C0 17 10 30 10 30 C10 30 20 17 20 10 C20 4.5 15.5 0 10 0 Z" fill="#1a3a5f"/>
+        <circle cx="10" cy="10" r="4" fill="#ffffff"/>
+      </svg>`;
+      return el;
+    }
 
-      map.addSource("locations", {
-        type: "geojson",
-        data: geojson
-      });
+    function renderMarkers(data) {
+      activeMarkers.forEach(m => m.remove());
+      activeMarkers = [];
+      markersById.clear();
 
-      map.addLayer({
-        id: "unclustered-point",
-        type: "circle",
-        source: "locations",
-        paint: {
-          "circle-color": "#e6c200",
-          "circle-radius": 7,
-          "circle-stroke-width": 2,
-          "circle-stroke-color": "#e6c200"
-        }
-      });
-
-      map.on("click", "unclustered-point", e => {
-        const props = e.features[0].properties;
-        const coords = e.features[0].geometry.coordinates.slice();
-        new mapboxgl.Popup({ offset: 10 })
-          .setLngLat(coords)
-          .setHTML(buildPopupHtml(props))
+      data.forEach(row => {
+        const el = makePinEl();
+        const popup = new mapboxgl.Popup({ offset: [0, -30] })
+          .setHTML(buildPopupHtml(row));
+        const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
+          .setLngLat([row.lng, row.lat])
+          .setPopup(popup)
           .addTo(map);
+        activeMarkers.push(marker);
+        markersById.set(row.id, { marker, row });
       });
 
-      map.on("mouseenter", "unclustered-point", () => map.getCanvas().style.cursor = "pointer");
-      map.on("mouseleave", "unclustered-point", () => map.getCanvas().style.cursor = "");
+      if (data.length) {
+        const bounds = data.reduce((b, r) =>
+          b.extend([r.lng, r.lat]),
+          new mapboxgl.LngLatBounds([data[0].lng, data[0].lat], [data[0].lng, data[0].lat])
+        );
+        map.fitBounds(bounds, { padding: 60 });
+      }
     }
 
     function populateCategoryFilter(data) {
@@ -372,7 +353,7 @@
       results.innerHTML = data.slice(0, 250).map(row => {
         const addr = [row.street, row.city, row.state].filter(Boolean).join(", ");
         return `
-          <div class="result-item" data-lat="${row.lat}" data-lng="${row.lng}" data-id="${row.id}">
+          <div class="result-item" data-id="${row.id}">
             <div class="result-title">${escapeHtml(row.name)}</div>
             <div class="result-meta">
               ${row.category ? `${escapeHtml(row.category)}<br>` : ""}
@@ -383,20 +364,14 @@
 
       results.querySelectorAll(".result-item[data-id]").forEach(item => {
         item.addEventListener("click", () => {
-          const lat = parseFloat(item.dataset.lat);
-          const lng = parseFloat(item.dataset.lng);
-          const id = Number(item.dataset.id);
-          const row = allData.find(r => r.id === id);
-          map.flyTo({ center: [lng, lat], zoom: 13 });
-          if (row) {
-            new mapboxgl.Popup({ offset: 10 })
-              .setLngLat([lng, lat])
-              .setHTML(buildPopupHtml(row))
-              .addTo(map);
-          }
-          if (window.innerWidth <= 800) {
-            sidebar.classList.remove("open");
-            toggleBtn.style.display = "flex";
+          const entry = markersById.get(Number(item.dataset.id));
+          if (entry) {
+            map.flyTo({ center: [entry.row.lng, entry.row.lat], zoom: 13 });
+            entry.marker.togglePopup();
+            if (window.innerWidth <= 800) {
+              sidebar.classList.remove("open");
+              toggleBtn.style.display = "flex";
+            }
           }
         });
       });
@@ -410,20 +385,8 @@
         const hay = [row.name, row.street, row.city, row.state, row.category, row.description].join(" ").toLowerCase();
         return matchCat && (!search || hay.includes(search));
       });
-
-      if (map.getSource("locations")) {
-        map.getSource("locations").setData(buildGeoJSON(filtered));
-      }
-
+      renderMarkers(filtered);
       renderResults(filtered);
-
-      if (filtered.length) {
-        const bounds = filtered.reduce((b, r) =>
-          b.extend([r.lng, r.lat]),
-          new mapboxgl.LngLatBounds([filtered[0].lng, filtered[0].lat], [filtered[0].lng, filtered[0].lat])
-        );
-        map.fitBounds(bounds, { padding: 60 });
-      }
     }
 
     map.on("load", () => {
@@ -433,14 +396,14 @@
           allData = res.data.map(normalizeRow).filter(r => !isNaN(r.lat) && !isNaN(r.lng));
           populateCategoryFilter(allData);
           renderLegend(allData);
-          addMapLayers(buildGeoJSON(allData));
+          renderMarkers(allData);
           renderResults(allData);
           document.getElementById("searchInput").addEventListener("input", applyFilters);
           document.getElementById("categoryFilter").addEventListener("change", applyFilters);
         },
         error(err) {
           document.getElementById("results").innerHTML =
-            `<div class="result-item">Could not load the Google Sheet. Check your published CSV link.</div>`;
+            `<div class="result-item">Could not load the Google Sheet.</div>`;
           console.error(err);
         }
       });
