@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Resource Map</title>
 
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
 
   <style>
@@ -23,7 +25,7 @@
       height: 100%;
       margin: 0;
       font-family: 'Montserrat', sans-serif;
-      background: var(--navy);
+      background: var(--yellow);
     }
 
     .app {
@@ -116,57 +118,7 @@
       line-height: 1.4;
     }
 
-    #map {
-      height: 100%;
-      width: 100%;
-    }
-
-    /* Pushpin marker */
-    .pin-marker {
-      position: relative;
-      width: 12px;
-      height: 30px;
-      cursor: pointer;
-    }
-    .pin-marker::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 12px;
-      height: 12px;
-      background: var(--yellow);
-      border: 2px solid rgba(0,0,0,0.3);
-      border-radius: 50%;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-    }
-    .pin-marker::after {
-      content: '';
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 2px;
-      height: 18px;
-      background: rgba(255,255,255,0.7);
-      border-radius: 1px;
-    }
-
-    /* Mapbox popup */
-    .mapboxgl-popup-content {
-      font-family: 'Montserrat', sans-serif;
-      font-size: 13px;
-      color: var(--navy);
-      border-radius: 10px;
-      border: 1.5px solid var(--navy);
-      box-shadow: 0 2px 8px rgba(26,58,95,0.2);
-      padding: 12px;
-      max-width: 260px;
-      line-height: 1.5;
-    }
-    .mapboxgl-popup-content a { color: var(--navy); font-weight: bold; }
-    .mapboxgl-popup-close-button { font-size: 16px; color: var(--navy); }
+    #map { height: 100%; width: 100%; }
 
     .legend {
       padding: 10px 12px;
@@ -188,9 +140,23 @@
       height: 12px;
       border-radius: 50%;
       flex: 0 0 12px;
-      background: var(--yellow);
-      border: 1.5px solid var(--navy);
+      background: var(--navy);
+      border: 1.5px solid var(--yellow);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
+
+    .mapboxgl-popup-content {
+      border-radius: 10px;
+      border: 1.5px solid var(--navy);
+      box-shadow: 0 2px 8px rgba(26,58,95,0.2);
+      font-family: 'Montserrat', sans-serif;
+      color: var(--navy);
+      font-size: 13px;
+      padding: 12px;
+    }
+
+    .mapboxgl-popup-content a { color: var(--navy); font-weight: bold; }
+    .mapboxgl-popup-close-button { color: var(--navy); font-size: 16px; }
 
     .toggle-btn {
       display: none;
@@ -212,13 +178,11 @@
       min-height: 44px;
       white-space: nowrap;
     }
+
     .toggle-btn:active { opacity: 0.85; }
 
     @media (max-width: 800px) {
-      .app {
-        grid-template-columns: 1fr;
-        grid-template-rows: 1fr;
-      }
+      .app { grid-template-columns: 1fr; grid-template-rows: 1fr; }
       #map { height: 100vh; }
       .sidebar {
         position: fixed;
@@ -232,26 +196,15 @@
       }
       .sidebar.open { transform: translateY(0); }
       .toggle-btn { display: flex; align-items: center; gap: 8px; }
-      .close-btn {
-        display: flex;
-        justify-content: flex-end;
-        padding: 8px 12px 0;
-      }
+      .close-btn { display: flex; justify-content: flex-end; padding: 8px 12px 0; }
       .close-btn button {
-        background: none;
-        border: none;
-        font-size: 22px;
-        color: var(--navy);
-        cursor: pointer;
-        padding: 4px 8px;
-        min-height: 44px;
-        min-width: 44px;
+        background: none; border: none; font-size: 22px;
+        color: var(--navy); cursor: pointer; padding: 4px 8px;
+        min-height: 44px; min-width: 44px;
       }
     }
 
-    @media (min-width: 801px) {
-      .close-btn { display: none; }
-    }
+    @media (min-width: 801px) { .close-btn { display: none; } }
   </style>
 </head>
 <body>
@@ -275,9 +228,6 @@
 
   <button class="toggle-btn" id="toggleBtn">☰ Browse Locations</button>
 
-  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
   <script>
     const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTjsEUDOSnLBUXNjryuSAN6oi95RlVK0YWstoEgCYOwSl0YO6rRfOW7xLke6tZ96iUf7jmElhv5Km4e/pub?output=csv";
 
@@ -285,49 +235,27 @@
     const toggleBtn = document.getElementById("toggleBtn");
     const closeBtn = document.getElementById("closeBtn");
 
-    toggleBtn.addEventListener("click", () => {
-      sidebar.classList.add("open");
-      toggleBtn.style.display = "none";
-    });
-    closeBtn.addEventListener("click", () => {
-      sidebar.classList.remove("open");
-      toggleBtn.style.display = "flex";
-    });
+    toggleBtn.addEventListener("click", () => { sidebar.classList.add("open"); toggleBtn.style.display = "none"; });
+    closeBtn.addEventListener("click", () => { sidebar.classList.remove("open"); toggleBtn.style.display = "flex"; });
 
-    mapboxgl.accessToken = "pk.eyJ1IjoiZmdyYW50MiIsImEiOiJjbW1tNjN5bXcxeDN4MnJwc3E3NG8zdXBuIn0.FtstObcTAyzZSyaXSj6alQ";
+    mapboxgl.accessToken = "pk.eyJ1IjoiZmdyYW50MiIsImEiOiJjbW1tNjl2dzYyOTV4MnJwb2ZyZ3k1dHB0In0.qbDKHmALqcUCwv_z5QKUIg";
 
     const map = new mapboxgl.Map({
       container: "map",
       style: "mapbox://styles/fgrant2/cmmm55hko000k01sagqrncb4n",
       center: [-98.5795, 39.8283],
-      zoom: 3.5
+      zoom: 3
     });
 
-    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+    map.addControl(new mapboxgl.NavigationControl(), "top-left");
 
     let allData = [];
-    let activeMarkers = [];
-    let markersById = new Map();
+    let popupMap = {}; // id -> popup for sidebar click
 
     function escapeHtml(v) {
       return String(v || "")
         .replace(/&/g, "&amp;").replace(/</g, "&lt;")
         .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-    }
-
-    function buildPopupHtml(row) {
-      const addr = [row.street, row.city, row.state].filter(Boolean).join(", ");
-      const web = row.website
-        ? `<div style="margin-top:6px;"><a href="${escapeHtml(row.website)}" target="_blank" rel="noopener">Website →</a></div>`
-        : "";
-      return `
-        <div>
-          <div style="font-weight:bold;margin-bottom:4px;">${escapeHtml(row.name)}</div>
-          ${row.category ? `<div>${escapeHtml(row.category)}</div>` : ""}
-          ${addr ? `<div>${escapeHtml(addr)}</div>` : ""}
-          ${row.description ? `<div style="margin-top:6px;">${escapeHtml(row.description)}</div>` : ""}
-          ${web}
-        </div>`;
     }
 
     function normalizeRow(row, i) {
@@ -345,8 +273,129 @@
       };
     }
 
+    function buildGeoJSON(data) {
+      return {
+        type: "FeatureCollection",
+        features: data.map(row => ({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [row.lng, row.lat] },
+          properties: {
+            id: row.id,
+            name: row.name,
+            street: row.street,
+            city: row.city,
+            state: row.state,
+            category: row.category,
+            description: row.description,
+            website: row.website
+          }
+        }))
+      };
+    }
+
+    function buildPopupHtml(props) {
+      const addr = [props.street, props.city, props.state].filter(Boolean).join(", ");
+      const web = props.website
+        ? `<div style="margin-top:6px;"><a href="${escapeHtml(props.website)}" target="_blank" rel="noopener">Website →</a></div>`
+        : "";
+      return `
+        <div style="max-width:260px;line-height:1.5;">
+          <div style="font-weight:bold;margin-bottom:4px;">${escapeHtml(props.name)}</div>
+          ${props.category ? `<div>${escapeHtml(props.category)}</div>` : ""}
+          ${addr ? `<div>${escapeHtml(addr)}</div>` : ""}
+          ${props.description ? `<div style="margin-top:6px;">${escapeHtml(props.description)}</div>` : ""}
+          ${web}
+        </div>`;
+    }
+
+    function addMapLayers(geojson) {
+      // Remove existing layers/source if re-rendering
+      ["clusters", "cluster-count", "unclustered-point"].forEach(id => {
+        if (map.getLayer(id)) map.removeLayer(id);
+      });
+      if (map.getSource("locations")) map.removeSource("locations");
+
+      map.addSource("locations", {
+        type: "geojson",
+        data: geojson,
+        cluster: true,
+        clusterMaxZoom: 14,
+        clusterRadius: 50
+      });
+
+      // Cluster circles
+      map.addLayer({
+        id: "clusters",
+        type: "circle",
+        source: "locations",
+        filter: ["has", "point_count"],
+        paint: {
+          "circle-color": "#1a3a5f",
+          "circle-radius": ["step", ["get", "point_count"], 18, 10, 24, 50, 30],
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#e6c200"
+        }
+      });
+
+      // Cluster count labels
+      map.addLayer({
+        id: "cluster-count",
+        type: "symbol",
+        source: "locations",
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": "{point_count_abbreviated}",
+          "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+          "text-size": 13
+        },
+        paint: { "text-color": "#e6c200" }
+      });
+
+      // Individual points
+      map.addLayer({
+        id: "unclustered-point",
+        type: "circle",
+        source: "locations",
+        filter: ["!", ["has", "point_count"]],
+        paint: {
+          "circle-color": "#1a3a5f",
+          "circle-radius": 7,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#e6c200"
+        }
+      });
+
+      // Click cluster -> zoom in
+      map.on("click", "clusters", e => {
+        const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] });
+        const clusterId = features[0].properties.cluster_id;
+        map.getSource("locations").getClusterExpansionZoom(clusterId, (err, zoom) => {
+          if (err) return;
+          map.easeTo({ center: features[0].geometry.coordinates, zoom });
+        });
+      });
+
+      // Click point -> show popup
+      map.on("click", "unclustered-point", e => {
+        const props = e.features[0].properties;
+        const coords = e.features[0].geometry.coordinates.slice();
+        new mapboxgl.Popup({ offset: 10 })
+          .setLngLat(coords)
+          .setHTML(buildPopupHtml(props))
+          .addTo(map);
+      });
+
+      // Cursor changes
+      map.on("mouseenter", "clusters", () => map.getCanvas().style.cursor = "pointer");
+      map.on("mouseleave", "clusters", () => map.getCanvas().style.cursor = "");
+      map.on("mouseenter", "unclustered-point", () => map.getCanvas().style.cursor = "pointer");
+      map.on("mouseleave", "unclustered-point", () => map.getCanvas().style.cursor = "");
+    }
+
     function populateCategoryFilter(data) {
       const sel = document.getElementById("categoryFilter");
+      // Clear existing options except "All"
+      while (sel.options.length > 1) sel.remove(1);
       [...new Set(data.map(d => d.category).filter(Boolean))].sort().forEach(cat => {
         const o = document.createElement("option");
         o.value = cat; o.textContent = cat;
@@ -373,7 +422,7 @@
       results.innerHTML = data.slice(0, 250).map(row => {
         const addr = [row.street, row.city, row.state].filter(Boolean).join(", ");
         return `
-          <div class="result-item" data-id="${row.id}">
+          <div class="result-item" data-lat="${row.lat}" data-lng="${row.lng}" data-name="${escapeHtml(row.name)}" data-id="${row.id}">
             <div class="result-title">${escapeHtml(row.name)}</div>
             <div class="result-meta">
               ${row.category ? `${escapeHtml(row.category)}<br>` : ""}
@@ -384,48 +433,23 @@
 
       results.querySelectorAll(".result-item[data-id]").forEach(item => {
         item.addEventListener("click", () => {
+          const lat = parseFloat(item.dataset.lat);
+          const lng = parseFloat(item.dataset.lng);
           const id = Number(item.dataset.id);
-          const { marker, row } = markersById.get(id) || {};
-          if (marker) {
-            map.flyTo({ center: [row.lng, row.lat], zoom: 13 });
-            marker.togglePopup();
-            if (window.innerWidth <= 800) {
-              sidebar.classList.remove("open");
-              toggleBtn.style.display = "flex";
-            }
+          const row = allData.find(r => r.id === id);
+          map.flyTo({ center: [lng, lat], zoom: 13 });
+          if (row) {
+            new mapboxgl.Popup({ offset: 10 })
+              .setLngLat([lng, lat])
+              .setHTML(buildPopupHtml(row))
+              .addTo(map);
+          }
+          if (window.innerWidth <= 800) {
+            sidebar.classList.remove("open");
+            toggleBtn.style.display = "flex";
           }
         });
       });
-    }
-
-    function renderMarkers(data) {
-      activeMarkers.forEach(m => m.remove());
-      activeMarkers = [];
-      markersById.clear();
-
-      data.forEach(row => {
-        const el = document.createElement("div");
-        el.className = "pin-marker";
-
-        const popup = new mapboxgl.Popup({ offset: [0, -28] })
-          .setHTML(buildPopupHtml(row));
-
-        const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
-          .setLngLat([row.lng, row.lat])
-          .setPopup(popup)
-          .addTo(map);
-
-        activeMarkers.push(marker);
-        markersById.set(row.id, { marker, row });
-      });
-
-      if (data.length) {
-        const bounds = data.reduce((b, r) =>
-          b.extend([r.lng, r.lat]),
-          new mapboxgl.LngLatBounds([data[0].lng, data[0].lat], [data[0].lng, data[0].lat])
-        );
-        map.fitBounds(bounds, { padding: 60 });
-      }
     }
 
     function applyFilters() {
@@ -436,27 +460,41 @@
         const hay = [row.name, row.street, row.city, row.state, row.category, row.description].join(" ").toLowerCase();
         return matchCat && (!search || hay.includes(search));
       });
-      renderMarkers(filtered);
+
+      // Update map source
+      if (map.getSource("locations")) {
+        map.getSource("locations").setData(buildGeoJSON(filtered));
+      }
+
       renderResults(filtered);
+
+      if (filtered.length) {
+        const bounds = filtered.reduce((b, r) =>
+          b.extend([r.lng, r.lat]),
+          new mapboxgl.LngLatBounds([filtered[0].lng, filtered[0].lat], [filtered[0].lng, filtered[0].lat])
+        );
+        map.fitBounds(bounds, { padding: 60 });
+      }
     }
 
-    Papa.parse(SHEET_CSV_URL, {
-      download: true, header: true, skipEmptyLines: true,
-      complete(res) {
-        allData = res.data.map(normalizeRow).filter(r => !isNaN(r.lat) && !isNaN(r.lng));
-        populateCategoryFilter(allData);
-        renderLegend(allData);
-        map.on("load", () => {
-          applyFilters();
+    map.on("load", () => {
+      Papa.parse(SHEET_CSV_URL, {
+        download: true, header: true, skipEmptyLines: true,
+        complete(res) {
+          allData = res.data.map(normalizeRow).filter(r => !isNaN(r.lat) && !isNaN(r.lng));
+          populateCategoryFilter(allData);
+          renderLegend(allData);
+          addMapLayers(buildGeoJSON(allData));
+          renderResults(allData);
           document.getElementById("searchInput").addEventListener("input", applyFilters);
           document.getElementById("categoryFilter").addEventListener("change", applyFilters);
-        });
-      },
-      error(err) {
-        document.getElementById("results").innerHTML =
-          `<div class="result-item">Could not load the Google Sheet.</div>`;
-        console.error(err);
-      }
+        },
+        error(err) {
+          document.getElementById("results").innerHTML =
+            `<div class="result-item">Could not load the Google Sheet. Check your published CSV link.</div>`;
+          console.error(err);
+        }
+      });
     });
   </script>
 </body>
