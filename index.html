@@ -120,30 +120,6 @@
 
     #map { height: 100%; width: 100%; }
 
-    .legend {
-      padding: 10px 12px;
-      font-size: 12px;
-      border-top: 1px solid var(--border);
-      background: #fff;
-    }
-
-    .legend-row {
-      display: flex;
-      align-items: center;
-      margin-bottom: 5px;
-      gap: 8px;
-      color: var(--navy);
-    }
-
-    .legend-swatch {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      flex: 0 0 12px;
-      background: var(--navy);
-      border: 1.5px solid var(--yellow);
-    }
-
     .mapboxgl-popup-content {
       border-radius: 10px;
       border: 1.5px solid var(--navy);
@@ -215,12 +191,11 @@
       <div class="controls">
         <h2>Small Business Supporters Across America</h2>
         <input id="searchInput" type="text" placeholder="Search by name, city, state..." />
-        <select id="categoryFilter">
-          <option value="all">All categories</option>
+        <select id="stateFilter">
+          <option value="all">All states</option>
         </select>
       </div>
       <div id="results" class="results"></div>
-      <div class="legend" id="legend"></div>
     </div>
     <div id="map"></div>
   </div>
@@ -281,7 +256,6 @@
       return `
         <div style="max-width:260px;line-height:1.5;">
           <div style="font-weight:bold;margin-bottom:4px;">${escapeHtml(row.name)}</div>
-          ${row.category ? `<div>${escapeHtml(row.category)}</div>` : ""}
           ${addr ? `<div>${escapeHtml(addr)}</div>` : ""}
           ${row.description ? `<div style="margin-top:6px;">${escapeHtml(row.description)}</div>` : ""}
           ${web}
@@ -324,24 +298,14 @@
       }
     }
 
-    function populateCategoryFilter(data) {
-      const sel = document.getElementById("categoryFilter");
+    function populateStateFilter(data) {
+      const sel = document.getElementById("stateFilter");
       while (sel.options.length > 1) sel.remove(1);
-      [...new Set(data.map(d => d.category).filter(Boolean))].sort().forEach(cat => {
+      [...new Set(data.map(d => d.state).filter(Boolean))].sort().forEach(st => {
         const o = document.createElement("option");
-        o.value = cat; o.textContent = cat;
+        o.value = st; o.textContent = st;
         sel.appendChild(o);
       });
-    }
-
-    function renderLegend(data) {
-      const legend = document.getElementById("legend");
-      const cats = [...new Set(data.map(d => d.category).filter(Boolean))].sort();
-      legend.innerHTML = cats.map(cat => `
-        <div class="legend-row">
-          <span class="legend-swatch"></span>
-          <span>${escapeHtml(cat)}</span>
-        </div>`).join("");
     }
 
     function renderResults(data) {
@@ -355,10 +319,7 @@
         return `
           <div class="result-item" data-id="${row.id}">
             <div class="result-title">${escapeHtml(row.name)}</div>
-            <div class="result-meta">
-              ${row.category ? `${escapeHtml(row.category)}<br>` : ""}
-              ${escapeHtml(addr)}
-            </div>
+            <div class="result-meta">${escapeHtml(addr)}</div>
           </div>`;
       }).join("");
 
@@ -379,11 +340,11 @@
 
     function applyFilters() {
       const search = document.getElementById("searchInput").value.trim().toLowerCase();
-      const cat = document.getElementById("categoryFilter").value;
+      const state = document.getElementById("stateFilter").value;
       const filtered = allData.filter(row => {
-        const matchCat = cat === "all" || row.category === cat;
+        const matchState = state === "all" || row.state === state;
         const hay = [row.name, row.street, row.city, row.state, row.category, row.description].join(" ").toLowerCase();
-        return matchCat && (!search || hay.includes(search));
+        return matchState && (!search || hay.includes(search));
       });
       renderMarkers(filtered);
       renderResults(filtered);
@@ -394,12 +355,11 @@
         download: true, header: true, skipEmptyLines: true,
         complete(res) {
           allData = res.data.map(normalizeRow).filter(r => !isNaN(r.lat) && !isNaN(r.lng));
-          populateCategoryFilter(allData);
-          renderLegend(allData);
+          populateStateFilter(allData);
           renderMarkers(allData);
           renderResults(allData);
           document.getElementById("searchInput").addEventListener("input", applyFilters);
-          document.getElementById("categoryFilter").addEventListener("change", applyFilters);
+          document.getElementById("stateFilter").addEventListener("change", applyFilters);
         },
         error(err) {
           document.getElementById("results").innerHTML =
